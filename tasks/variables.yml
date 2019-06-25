@@ -5,12 +5,17 @@
   with_first_found:
     - files:
         - "vars/{{ ansible_os_family }}.yml"
-      skip: true
+      errors: ignore
   when: ansible_os_family != "RedHat"
 
 - name: Include OS-specific variables (RedHat).
   include_vars: "{{ ansible_os_family }}-{{ ansible_distribution_major_version }}.yml"
   when: ansible_os_family == "RedHat"
+
+- name: Define mysql_python_packages.
+  set_fact:
+    mysql_python_packages: "{{ __mysql_python_packages | list }}"
+  when: mysql_python_packages is not defined
 
 - name: Define mysql_packages.
   set_fact:
