@@ -6,6 +6,7 @@
     password: "{{ mysql_user_password }}"
     priv: '*.*:ALL,GRANT'
     state: present
+  become: yes
   when: mysql_user_name != mysql_root_username
 
 # Has to be after the password assignment, for idempotency.
@@ -15,6 +16,7 @@
     dest: "{{ mysql_user_home }}/.my.cnf"
     owner: "{{ mysql_user_name }}"
     mode: 0600
+  become: yes
   when: >
     mysql_user_name != mysql_root_username
     and (mysql_install_packages | bool or mysql_user_password_update)
@@ -23,6 +25,7 @@
   command: 'mysql -NBe "{{ item }}"'
   with_items:
     - DELETE FROM mysql.user WHERE User='{{ mysql_root_username }}' AND Host NOT IN ('localhost', '127.0.0.1', '::1')
+  become: yes
   changed_when: false
 
 - name: Get list of hosts for the root user.
@@ -32,6 +35,7 @@
     WHERE User = '{{ mysql_root_username }}'
     ORDER BY (Host='localhost') ASC"
   register: mysql_root_hosts
+  become: yes
   changed_when: false
   check_mode: false
   when: mysql_install_packages | bool or mysql_root_password_update
@@ -45,6 +49,7 @@
     'ALTER USER "{{ mysql_root_username }}"@"{{ item }}"
     IDENTIFIED WITH mysql_native_password BY "{{ mysql_root_password }}";'
   with_items: "{{ mysql_root_hosts.stdout_lines|default([]) }}"
+  become: yes
   when: >
     ((mysql_install_packages | bool) or mysql_root_password_update)
     and ('5.7.' in mysql_cli_version.stdout or '8.0.' in mysql_cli_version.stdout)
@@ -55,6 +60,7 @@
     mysql -NBe
     'SET PASSWORD FOR "{{ mysql_root_username }}"@"{{ item }}" = PASSWORD("{{ mysql_root_password }}");'
   with_items: "{{ mysql_root_hosts.stdout_lines|default([]) }}"
+  become: yes
   when: >
     ((mysql_install_packages | bool) or mysql_root_password_update)
     and ('5.7.' not in mysql_cli_version.stdout and '8.0.' not in mysql_cli_version.stdout)
@@ -67,11 +73,13 @@
     owner: root
     group: root
     mode: 0600
+  become: yes
   when: mysql_install_packages | bool or mysql_root_password_update
 
 - name: Get list of hosts for the anonymous user.
   command: mysql -NBe 'SELECT Host FROM mysql.user WHERE User = ""'
   register: mysql_anonymous_hosts
+  become: yes
   changed_when: false
   check_mode: false
 
@@ -80,7 +88,9 @@
     name: ""
     host: "{{ item }}"
     state: absent
+  become: yes
   with_items: "{{ mysql_anonymous_hosts.stdout_lines|default([]) }}"
 
 - name: Remove MySQL test database.
   mysql_db: "name='test' state=absent"
+  become: yes
