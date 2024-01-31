@@ -71,6 +71,7 @@
   slurp:
     src: "{{ mysql_root_cnf_path }}"
   register: mysql_root_cnf_file
+  when: mysql_install_packages | bool or mysql_root_password_update
 
 # It would be cleaner to use the `ini` lookup plugin, but that only works
 # locally so we'd have to copy the file first, which we'd rather not do because
@@ -78,6 +79,7 @@
 - name: Extract the root password from .my.cnf
   set_fact:
     mysql_root_password_written: "{{ mysql_root_cnf_file['content'] | b64decode | regex_findall('password=\"(.+)\"') | first }}"
+  when: mysql_install_packages | bool or mysql_root_password_update
 
 # Note: We do not use mysql_user for this operation, as it doesn't always update
 # the root password correctly. See: https://goo.gl/MSOejW
